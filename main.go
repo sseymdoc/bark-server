@@ -10,6 +10,7 @@ import (
 
 	"github.com/finb/bark-server/v2/apns"
 	"github.com/finb/bark-server/v2/database"
+	"github.com/finb/bark-server/v2/fcm"
 
 	jsoniter "github.com/json-iterator/go"
 
@@ -46,6 +47,11 @@ func main() {
 	}
 }
 func runServer(c *cli.Context) error {
+	if path := c.String("fcm-credentials"); path != "" {
+		if err := fcm.Init(path); err != nil {
+			return err
+		}
+	}
 	network := determineNetwork(c)
 	fiberApp := createFiberApp(c, network)
 	setupRouter(c, fiberApp)
@@ -293,6 +299,12 @@ func getAppFlags() []cli.Flag {
 			EnvVars: []string{"BARK_SERVER_MAX_APNS_CLIENT_COUNT"},
 			Value:   1,
 			Action:  func(ctx *cli.Context, v int) error { return apns.ReCreateAPNS(v) },
+		},
+		&cli.StringFlag{
+			Name:    "fcm-credentials",
+			Usage:   "Firebase service account JSON file, enables Android (FCM) push",
+			EnvVars: []string{"BARK_SERVER_FCM_CREDENTIALS"},
+			Value:   "",
 		},
 		&cli.IntFlag{
 			Name:    "concurrency",

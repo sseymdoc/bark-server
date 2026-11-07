@@ -65,6 +65,15 @@ task linux_amd64_v3
 
 Just run the server with `-dsn=user:pass@tcp(mysql_host)/bark`, it will use MySQL instead of file database Bbolt
 
+### Android (FCM) push
+
+Android devices register with `device_type=android` and receive pushes through Firebase Cloud Messaging (HTTP v1 API, data-only messages; the Android app builds the notification itself).
+
+1. In the [Firebase console](https://console.firebase.google.com/) open the project used by your Android build, go to **Project settings → Service accounts**, and click **Generate new private key** to download the service account JSON.
+2. Start the server with it: `./bark-server --fcm-credentials /path/to/service-account.json` (or env `BARK_SERVER_FCM_CREDENTIALS=/path/to/service-account.json`). The server exits with an error if the file cannot be loaded.
+
+**Note: An FCM token can only be pushed by the Firebase project that issued it, so Android devices must use a self-hosted bark-server configured with the same Firebase project as the Android app. Without `--fcm-credentials`, pushes to Android devices fail with `fcm not configured`; iOS pushes are unaffected.**
+
 ## Others
 
 * [API_V2.md](docs/API_V2.md).

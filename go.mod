@@ -16,9 +16,11 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	go.etcd.io/bbolt v1.5.0
 	golang.org/x/net v0.59.0
+	golang.org/x/oauth2 v0.37.0
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect

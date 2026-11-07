@@ -55,17 +55,17 @@ func doRegister(c *fiber.Ctx, compat bool) error {
 		}
 	}
 
-	// DeviceToken length is variable, but should not be too long.
-	if len(deviceInfo.DeviceToken) > 160 {
+	// DeviceToken length is variable (FCM tokens are ~163 chars), capped at the MySQL `token VARCHAR(255)` column.
+	if len(deviceInfo.DeviceToken) > 255 {
 		return c.Status(400).JSON(failed(400, "device token is invalid"))
 	}
 
-	// device type is used to select the APNs topic when pushing; default to ios for compatibility
+	// device type selects the push channel (APNs topic or FCM); default to ios for compatibility
 	deviceType := strings.ToLower(deviceInfo.DeviceType)
 	if deviceType == "" {
 		deviceType = database.DeviceTypeIOS
 	}
-	if deviceType != database.DeviceTypeIOS && deviceType != database.DeviceTypeWatchOS {
+	if deviceType != database.DeviceTypeIOS && deviceType != database.DeviceTypeWatchOS && deviceType != database.DeviceTypeAndroid {
 		return c.Status(400).JSON(failed(400, "invalid device type: %s", deviceInfo.DeviceType))
 	}
 	deviceInfo.DeviceType = deviceType

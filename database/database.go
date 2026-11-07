@@ -6,6 +6,7 @@ import "encoding/json"
 const (
 	DeviceTypeIOS     = "ios"
 	DeviceTypeWatchOS = "watchos"
+	DeviceTypeAndroid = "android"
 )
 
 // DeviceRecord describes a registered device's APNs token and device type.

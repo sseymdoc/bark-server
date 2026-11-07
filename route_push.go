@@ -9,6 +9,8 @@ import (
 	"github.com/gofiber/fiber/v2/utils"
 
 	"github.com/finb/bark-server/v2/apns"
+	"github.com/finb/bark-server/v2/database"
+	"github.com/finb/bark-server/v2/fcm"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -264,7 +266,12 @@ func push(params map[string]interface{}) (int, error) {
 	msg.DeviceToken = deviceRecord.Token
 	msg.DeviceType = deviceRecord.Type
 
-	code, err := apns.Push(&msg)
+	var code int
+	if msg.DeviceType == database.DeviceTypeAndroid {
+		code, err = fcm.Push(&msg)
+	} else {
+		code, err = apns.Push(&msg)
+	}
 
 	// Invalid token, delete it from database.
 	if code == 410 || (code == 400 && strings.Contains(err.Error(), "BadDeviceToken")) {
