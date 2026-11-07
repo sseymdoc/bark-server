@@ -72,7 +72,16 @@ Android devices register with `device_type=android` and receive pushes through F
 1. In the [Firebase console](https://console.firebase.google.com/) open the project used by your Android build, go to **Project settings → Service accounts**, and click **Generate new private key** to download the service account JSON.
 2. Start the server with it: `./bark-server --fcm-credentials /path/to/service-account.json` (or env `BARK_SERVER_FCM_CREDENTIALS=/path/to/service-account.json`). The server exits with an error if the file cannot be loaded.
 
-**Note: An FCM token can only be pushed by the Firebase project that issued it, so Android devices must use a self-hosted bark-server configured with the same Firebase project as the Android app. Without `--fcm-credentials`, pushes to Android devices fail with `fcm not configured`; iOS pushes are unaffected.**
+**Note: An FCM token can only be pushed by the Firebase project that issued it, so Android devices must use a self-hosted bark-server configured with the same Firebase project as the Android app.**
+
+### Android SSE fallback
+
+FCM is often unreachable (for example on phones without Google services, or in mainland China), so every Android push is also delivered over Server-Sent Events. The app keeps `GET /stream?key=<device key>&devicetoken=<registered token>` open and drops whichever copy arrives second (both carry the same `_msgid`).
+
+* The stream requires the device token the app registered, not just the key, so a key shared with scripts cannot be used to read messages.
+* Each device keeps a backlog of the last 100 messages from the past 24 hours; a reconnecting app sends `Last-Event-ID` and receives what it missed. The backlog lives in memory: it is lost on restart and not shared between instances.
+* Apps without FCM register a token starting with `sse:`; pushes to them skip FCM. For other Android devices an FCM failure (including a server without `--fcm-credentials`) is logged and the push still succeeds, since the message is queued for SSE. iOS pushes are unaffected.
+* Behind nginx, the stream sets `X-Accel-Buffering: no`; keep `proxy_read_timeout` above 25 seconds (the heartbeat interval).
 
 ## Others
 

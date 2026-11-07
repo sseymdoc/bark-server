@@ -30,7 +30,7 @@ func TestBuildMessage(t *testing.T) {
 			"title":        "spoofed",
 		},
 	}
-	m := buildMessage(msg)
+	m := buildMessage(msg, Data(msg))
 	data := m["data"].(map[string]string)
 	want := map[string]string{
 		"id": "abc", "group": "g", "badge": "3", "level": "critical",
@@ -56,7 +56,8 @@ func TestBuildMessage(t *testing.T) {
 	}
 
 	// no id -> no collapse_key; delete=1 stays a plain data message
-	m = buildMessage(&apns.PushMessage{Body: "Empty Message", ExtParams: map[string]interface{}{"delete": "1"}})
+	empty := &apns.PushMessage{Body: "Empty Message", ExtParams: map[string]interface{}{"delete": "1"}}
+	m = buildMessage(empty, Data(empty))
 	if _, ok := m["android"].(map[string]any)["collapse_key"]; ok {
 		t.Error("collapse_key set without id")
 	}
@@ -70,7 +71,7 @@ func TestPush(t *testing.T) {
 	t.Cleanup(func() { endpoint, client, projectID = oldEndpoint, nil, "" })
 
 	client = nil
-	if code, err := Push(&apns.PushMessage{}); code != 500 || err == nil || err.Error() != "fcm not configured" {
+	if code, err := Push(&apns.PushMessage{}, nil); code != 500 || err == nil || err.Error() != "fcm not configured" {
 		t.Fatalf("unconfigured: code=%d err=%v", code, err)
 	}
 
@@ -112,7 +113,7 @@ func TestPush(t *testing.T) {
 		{"bad", 400, "INVALID_ARGUMENT: bad payload"},
 	}
 	for _, c := range cases {
-		code, err := Push(&apns.PushMessage{DeviceToken: c.token})
+		code, err := Push(&apns.PushMessage{DeviceToken: c.token}, nil)
 		if code != c.code || (c.err == "") != (err == nil) || (err != nil && !strings.Contains(err.Error(), c.err)) {
 			t.Errorf("%s: code=%d err=%v, want %d %q", c.token, code, err, c.code, c.err)
 		}

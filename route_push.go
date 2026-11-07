@@ -11,6 +11,8 @@ import (
 	"github.com/finb/bark-server/v2/apns"
 	"github.com/finb/bark-server/v2/database"
 	"github.com/finb/bark-server/v2/fcm"
+	"github.com/finb/bark-server/v2/sse"
+	"github.com/mritd/logger"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -267,8 +269,14 @@ func push(params map[string]interface{}) (int, error) {
 	msg.DeviceType = deviceRecord.Type
 
 	var code int
-	if msg.DeviceType == database.DeviceTypeAndroid {
-		code, err = fcm.Push(&msg)
+	android := msg.DeviceType == database.DeviceTypeAndroid
+	if android {
+		// SSE gets every Android push (and keeps a backlog); FCM is skipped for apps registered without it.
+		data := fcm.Data(&msg)
+		sse.Publish(msg.DeviceKey, data)
+		if !strings.HasPrefix(msg.DeviceToken, "sse:") {
+			code, err = fcm.Push(&msg, data)
+		}
 	} else {
 		code, err = apns.Push(&msg)
 	}
@@ -276,6 +284,11 @@ func push(params map[string]interface{}) (int, error) {
 	// Invalid token, delete it from database.
 	if code == 410 || (code == 400 && strings.Contains(err.Error(), "BadDeviceToken")) {
 		_, _ = db.SaveDeviceTokenByKey(msg.DeviceKey, "", deviceRecord.Type)
+	}
+	if err != nil && android {
+		// The message is already queued for SSE, so an FCM failure does not lose it.
+		logger.Warnf("fcm push failed, delivered over sse only: %v", err)
+		return 200, nil
 	}
 	if err != nil {
 		return 500, fmt.Errorf("push failed: %v", err)

@@ -38,6 +38,7 @@ func init() {
 				"arch":    runtime.GOOS + "/" + runtime.GOARCH,
 				"commit":  commitID,
 				"devices": devices,
+				"sse":     true,
 			})
 		})
 	})

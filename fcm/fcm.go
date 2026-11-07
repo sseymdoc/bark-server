@@ -54,8 +54,9 @@ func isReserved(key string) bool {
 	return strings.HasPrefix(key, "google") || strings.HasPrefix(key, "gcm")
 }
 
-// buildMessage builds a data-only FCM message; the Android app renders the notification itself.
-func buildMessage(msg *apns.PushMessage) map[string]any {
+// Data is the payload the Android app receives over FCM and SSE alike: every extra parameter
+// (lowercased, stringified) plus title/subtitle/body/sound.
+func Data(msg *apns.PushMessage) map[string]string {
 	data := make(map[string]string, len(msg.ExtParams)+4)
 	for k, v := range msg.ExtParams {
 		// Change all parameter names to lowercase to prevent inconsistent capitalization (same as apns.Push)
@@ -68,7 +69,11 @@ func buildMessage(msg *apns.PushMessage) map[string]any {
 	data["subtitle"] = msg.Subtitle
 	data["body"] = msg.Body
 	data["sound"] = msg.Sound
+	return data
+}
 
+// buildMessage builds a data-only FCM message; the Android app renders the notification itself.
+func buildMessage(msg *apns.PushMessage, data map[string]string) map[string]any {
 	android := map[string]any{"priority": "HIGH", "ttl": "86400s"}
 	if msg.Id != "" {
 		android["collapse_key"] = msg.Id
@@ -77,11 +82,11 @@ func buildMessage(msg *apns.PushMessage) map[string]any {
 }
 
 // Push sends msg via FCM HTTP v1. Returns 410 for unregistered tokens so the caller can clean them up.
-func Push(msg *apns.PushMessage) (int, error) {
+func Push(msg *apns.PushMessage, data map[string]string) (int, error) {
 	if client == nil {
 		return 500, fmt.Errorf("fcm not configured")
 	}
-	body, err := json.Marshal(map[string]any{"message": buildMessage(msg)})
+	body, err := json.Marshal(map[string]any{"message": buildMessage(msg, data)})
 	if err != nil {
 		return 500, err
 	}
