@@ -35,6 +35,8 @@ func isAndroidDevice(key, token string) bool {
 }
 
 func doStreamAuth(c *fiber.Ctx) error {
+	// The answer depends on the credential headers: no cache may hand it to another device.
+	c.Set("Cache-Control", "no-store")
 	key, token := c.Get("X-Bark-Key"), c.Get("X-Bark-Device-Token")
 	if key == "" || token == "" {
 		return c.Status(400).JSON(failed(400, "device key and token are required"))

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/finb/bark-server/v2/database"
@@ -54,6 +55,9 @@ func TestStreamAuth(t *testing.T) {
 			defer response.Body.Close()
 			if response.StatusCode != tc.want {
 				t.Fatalf("status = %d, want %d", response.StatusCode, tc.want)
+			}
+			if strings.HasPrefix(tc.path, "/stream/auth") && response.Header.Get("Cache-Control") != "no-store" {
+				t.Fatal("auth answer must not be cacheable")
 			}
 			body, err := io.ReadAll(response.Body)
 			if err != nil || (tc.want == 204 && len(body) != 0) {
