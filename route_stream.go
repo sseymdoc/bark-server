@@ -17,7 +17,7 @@ import (
 const sseHeartbeat = 25 * time.Second
 
 func init() {
-	// Weight 100: "/stream" must win over the "/:device_key" push routes.
+	// Weight 100: stream endpoints must win over the "/:device_key" push routes.
 	registerRouteWithWeight("stream", 100, func(router fiber.Router) {
 		go func() {
 			for range time.Tick(10 * time.Minute) {
@@ -25,7 +25,26 @@ func init() {
 			}
 		}()
 		router.Get("/stream", doStream)
+		router.Get("/stream/auth", doStreamAuth)
 	})
+}
+
+func isAndroidDevice(key, token string) bool {
+	record, err := db.DeviceTokenByKey(key)
+	return err == nil && record != nil && record.Token == token && record.Type == database.DeviceTypeAndroid
+}
+
+func doStreamAuth(c *fiber.Ctx) error {
+	// The answer depends on the credential headers: no cache may hand it to another device.
+	c.Set("Cache-Control", "no-store")
+	key, token := c.Get("X-Bark-Key"), c.Get("X-Bark-Device-Token")
+	if key == "" || token == "" {
+		return c.Status(400).JSON(failed(400, "device key and token are required"))
+	}
+	if !isAndroidDevice(key, token) {
+		return c.Status(403).JSON(failed(403, "device key and token do not match"))
+	}
+	return c.SendStatus(204)
 }
 
 // doStream serves Android pushes as Server-Sent Events. The app proves it owns the key with the
@@ -35,8 +54,7 @@ func doStream(c *fiber.Ctx) error {
 	if key == "" || token == "" {
 		return c.Status(400).JSON(failed(400, "key and devicetoken are required"))
 	}
-	record, err := db.DeviceTokenByKey(key)
-	if err != nil || record.Token != token || record.Type != database.DeviceTypeAndroid {
+	if !isAndroidDevice(key, token) {
 		return c.Status(403).JSON(failed(403, "device key and token do not match"))
 	}
 	last, _ := strconv.ParseInt(c.Get("Last-Event-ID", c.Query("last_event_id")), 10, 64)
